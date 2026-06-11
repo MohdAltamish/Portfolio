@@ -128,7 +128,7 @@ export const ProjectDetail = () => {
            <Link to="/work" className="group inline-flex flex-col items-center gap-4">
               <span className={`text-xs font-mono uppercase tracking-widest ${t.subtle}`}>Next Project</span>
               <span className={`text-6xl md:text-8xl font-medium tracking-tighter ${t.text} group-hover:${isDark ? 'text-neutral-400' : 'text-neutral-500'} transition-colors`}>
-                View Archive
+                View Projects
               </span>
            </Link>
         </div>

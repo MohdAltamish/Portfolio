@@ -21,7 +21,6 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Paths */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/app/*"],
       "lucide-react@*": ["./node_modules/lucide-react"],
@@ -62,8 +61,7 @@
       "react-day-picker@*": ["./node_modules/react-day-picker"],
       "embla-carousel-react@*": ["./node_modules/embla-carousel-react"],
       "react-resizable-panels@*": ["./node_modules/react-resizable-panels"]
-    },
-    "ignoreDeprecations": "6.0"
+    }
   },
   "include": ["src"]
 }

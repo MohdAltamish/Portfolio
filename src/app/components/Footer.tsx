@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowUpRight, Github, Linkedin, Mail, X, Send, MapPin, Phone } from 'lucide-react';
 import { useTheme, tc } from '../context/ThemeContext';
+import emailjs from '@emailjs/browser';
+
+const EMAILJS_SERVICE_ID = 'service_p2dp08d';
+const EMAILJS_TEMPLATE_ID = 'template_bj1dvhy';
+const EMAILJS_PUBLIC_KEY = 'YU3YdKfurCVgu3XTX';
 
 export const Footer = () => {
   const { isDark } = useTheme();
@@ -116,19 +121,42 @@ export const Footer = () => {
 };
 
 const ContactModal = ({ isOpen, onClose, isDark, t }: { isOpen: boolean; onClose: () => void; isDark: boolean; t: any }) => {
-  const [formState, setFormState] = useState<'idle' | 'submitting' | 'success'>('idle');
+  const formRef = useRef<HTMLFormElement>(null);
+  const [formState, setFormState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [selectedBudget, setSelectedBudget] = useState<string>('');
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formRef.current) return;
+
     setFormState('submitting');
-    setTimeout(() => {
+    setErrorMsg('');
+
+    try {
+      await emailjs.sendForm(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        formRef.current,
+        EMAILJS_PUBLIC_KEY,
+      );
+
       setFormState('success');
       setTimeout(() => {
         onClose();
         setFormState('idle');
-      }, 2000);
-    }, 1500);
+        setSelectedBudget('');
+        formRef.current?.reset();
+      }, 2500);
+    } catch (error: any) {
+      console.error('EmailJS Error:', error);
+      setFormState('error');
+      setErrorMsg(error?.text || 'Something went wrong. Please try again.');
+      setTimeout(() => setFormState('idle'), 4000);
+    }
   };
+
+  const budgetRanges = ['< 10k', '10k - 50k', '50k - 100k', '> 100k'];
 
   return (
     <AnimatePresence>
@@ -179,11 +207,22 @@ const ContactModal = ({ isOpen, onClose, isDark, t }: { isOpen: boolean; onClose
                   Tell us about your vision. We'll help you build it.
                 </p>
 
-                <form onSubmit={handleSubmit} className="space-y-12">
+                {formState === 'error' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-light"
+                  >
+                    {errorMsg}
+                  </motion.div>
+                )}
+
+                <form ref={formRef} onSubmit={handleSubmit} className="space-y-12">
                   <div className="space-y-8">
                     <div className="group relative">
                       <input
                         required
+                        name="from_name"
                         type="text"
                         placeholder="Your Name"
                         className={`w-full bg-transparent border-b ${t.border} py-4 text-xl font-light focus:outline-none ${isDark ? 'focus:border-white' : 'focus:border-neutral-700'} transition-colors ${isDark ? 'placeholder:text-neutral-700' : 'placeholder:text-neutral-400'} ${t.text}`}
@@ -193,6 +232,7 @@ const ContactModal = ({ isOpen, onClose, isDark, t }: { isOpen: boolean; onClose
                     <div className="group relative">
                       <input
                         required
+                        name="from_email"
                         type="email"
                         placeholder="Email Address"
                         className={`w-full bg-transparent border-b ${t.border} py-4 text-xl font-light focus:outline-none ${isDark ? 'focus:border-white' : 'focus:border-neutral-700'} transition-colors ${isDark ? 'placeholder:text-neutral-700' : 'placeholder:text-neutral-400'} ${t.text}`}
@@ -202,6 +242,7 @@ const ContactModal = ({ isOpen, onClose, isDark, t }: { isOpen: boolean; onClose
                     <div className="group relative">
                       <textarea
                         required
+                        name="message"
                         placeholder="Project Details..."
                         rows={4}
                         className={`w-full bg-transparent border-b ${t.border} py-4 text-xl font-light focus:outline-none ${isDark ? 'focus:border-white' : 'focus:border-neutral-700'} transition-colors resize-none ${isDark ? 'placeholder:text-neutral-700' : 'placeholder:text-neutral-400'} ${t.text}`}
@@ -209,11 +250,23 @@ const ContactModal = ({ isOpen, onClose, isDark, t }: { isOpen: boolean; onClose
                     </div>
                   </div>
 
+                  {/* Hidden input to send the selected budget value to EmailJS */}
+                  <input type="hidden" name="budget" value={selectedBudget} />
+
                   <div className="space-y-4">
                      <label className={`text-xs font-mono uppercase tracking-widest ${t.subtle}`}>Budget Range</label>
                      <div className="flex flex-wrap gap-3">
-                        {['< 10k', '10k - 50k', '50k - 100k', '> 100k'].map(range => (
-                          <button type="button" key={range} className={`px-4 py-2 rounded-full border ${t.border} text-sm font-light ${t.text} hover:bg-white hover:text-black transition-all`}>
+                        {budgetRanges.map(range => (
+                          <button
+                            type="button"
+                            key={range}
+                            onClick={() => setSelectedBudget(range)}
+                            className={`px-4 py-2 rounded-full border text-sm font-light transition-all ${
+                              selectedBudget === range
+                                ? 'bg-white text-black border-white'
+                                : `${t.border} ${t.text} hover:bg-white hover:text-black`
+                            }`}
+                          >
                             {range}
                           </button>
                         ))}

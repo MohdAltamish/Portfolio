@@ -1,34 +1,13 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { motion, useInView } from 'motion/react';
-import { Code2, Cloud, Brain, Database, Layers, GitBranch } from 'lucide-react';
+import { Code2, Cloud, Brain, Database, Layers, GitBranch, Cpu, Globe, Shield, Zap } from 'lucide-react';
 import { useTheme, tc } from '../context/ThemeContext';
+import { fetchSiteContent, defaultSiteContent, type SkillCard } from '../data/firebaseData';
 
-const skills = [
-  {
-    icon: Code2,
-    title: "Programming",
-    description: "Python · Java · C · JavaScript",
-    skills: ["Data Structures", "Algorithms", "Problem Solving"]
-  },
-  {
-    icon: Layers,
-    title: "Web Development",
-    description: "HTML · CSS · React · Next.js · Flask · Node.js",
-    skills: ["Full Stack", "Responsive Design", "APIs"]
-  },
-  {
-    icon: Cloud,
-    title: "Cloud & DevOps",
-    description: "Google Cloud · Vercel · Docker · Kubernetes · CI/CD",
-    skills: ["Deployment", "Scalability", "Automation"]
-  },
-  {
-    icon: Brain,
-    title: "AI/ML & Data",
-    description: "PyTorch · Gemini API · HuggingFace · Google ADK",
-    skills: ["Neural Networks", "Data Analytics", "AI Agents"]
-  }
-];
+// Icon map for dynamic rendering from Firestore icon key
+const iconMap: Record<string, React.ElementType> = {
+  Code2, Cloud, Brain, Database, Layers, GitBranch, Cpu, Globe, Shield, Zap,
+};
 
 export const Services = () => {
   const { isDark } = useTheme();
@@ -36,6 +15,12 @@ export const Services = () => {
 
   const containerRef = useRef(null);
   const isInView = useInView(containerRef, { once: true, margin: "-100px" });
+
+  const [skills, setSkills] = useState<SkillCard[]>(defaultSiteContent.skills);
+
+  useEffect(() => {
+    fetchSiteContent().then((content) => setSkills(content.skills));
+  }, []);
 
   return (
     <section ref={containerRef} id="services" className={`py-32 px-6 ${t.pageBg} relative overflow-hidden transition-colors duration-500`}>
@@ -120,7 +105,9 @@ export const Services = () => {
   );
 };
 
-const ServiceCard = ({ service, index, isDark, t }: { service: any, index: number, isDark: boolean, t: any }) => {
+const ServiceCard = ({ service, index, isDark, t }: { service: SkillCard, index: number, isDark: boolean, t: any }) => {
+  const IconComponent = iconMap[service.icon] || Code2;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -131,7 +118,7 @@ const ServiceCard = ({ service, index, isDark, t }: { service: any, index: numbe
       className={`group p-8 rounded-2xl border ${t.card} transition-all duration-500 backdrop-blur-sm`}
     >
       <div className={`mb-8 w-12 h-12 rounded-full ${isDark ? 'bg-white/5' : 'bg-neutral-200'} flex items-center justify-center group-hover:bg-white group-hover:text-black transition-colors duration-500`}>
-        <service.icon className="w-6 h-6" />
+        <IconComponent className="w-6 h-6" />
       </div>
 
       <h3 className={`text-xl font-medium mb-4 tracking-tight ${t.text}`}>{service.title}</h3>

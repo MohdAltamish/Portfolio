@@ -1,12 +1,19 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform } from 'motion/react';
 import { useTheme, tc } from '../context/ThemeContext';
+import { fetchSiteContent, defaultSiteContent, type HeroData } from '../data/firebaseData';
 
 export const Hero = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll();
   const { isDark } = useTheme();
   const t = tc(isDark);
+
+  const [hero, setHero] = useState<HeroData>(defaultSiteContent.hero);
+
+  useEffect(() => {
+    fetchSiteContent().then((content) => setHero(content.hero));
+  }, []);
 
   const yText = useTransform(scrollY, [0, 500], [0, 200]);
   const yBg = useTransform(scrollY, [0, 500], [0, 100]);
@@ -62,7 +69,7 @@ export const Hero = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
             </span>
-            Open to Internship Opportunities
+            {hero.statusText}
           </div>
         </motion.div>
 
@@ -72,8 +79,8 @@ export const Hero = () => {
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
           className={`text-7xl md:text-[11rem] font-medium tracking-tighter leading-[0.85] mb-12 ${t.text}`}
         >
-          Mohd <br />
-          <span className={`italic font-serif ${t.subtle}`}>Altamish</span>
+          {hero.firstName} <br />
+          <span className={`italic font-serif ${t.subtle}`}>{hero.lastName}</span>
         </motion.h1>
 
         <motion.div
@@ -82,14 +89,12 @@ export const Hero = () => {
           transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className={`flex flex-col md:flex-row items-center gap-6 md:gap-16 text-lg font-light ${t.muted} max-w-4xl mx-auto`}
         >
-          <p className="md:text-right flex-1 leading-relaxed">
-            AI Builder · Hackathon Winner<br />
-            Full Stack Developer · Problem Solver
+          <p className="md:text-right flex-1 leading-relaxed" style={{ whiteSpace: 'pre-line' }}>
+            {hero.taglineLeft}
           </p>
           <div className={`w-px h-16 ${isDark ? 'bg-white/10' : 'bg-neutral-300'} hidden md:block`} />
-          <p className="md:text-left flex-1 leading-relaxed">
-            Crafting AI-Powered Products<br />
-            with Precision & Purpose
+          <p className="md:text-left flex-1 leading-relaxed" style={{ whiteSpace: 'pre-line' }}>
+            {hero.taglineRight}
           </p>
         </motion.div>
       </motion.div>

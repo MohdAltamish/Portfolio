@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowLeft, ArrowUpRight, Github, ExternalLink } from 'lucide-react';
-import { projects } from '../data/projects';
+import { fetchProjects, type Project } from '../data/firebaseData';
+import { projects as defaultProjects } from '../data/projects';
 import modShieldImg from '../../imports/ModShield.png';
 import carbonTrackerImg from '../../imports/6.png';
 import driftfixImg from '../../imports/2.png';
@@ -12,13 +13,39 @@ import uidaiImg from '../../imports/5.png';
 import crisisCommandImg from '../../imports/7.png';
 import { useTheme, tc } from '../context/ThemeContext';
 
+const localImages: Record<string, string> = {
+  'modshield': modShieldImg,
+  'carbon-tracker': carbonTrackerImg,
+  'driftfix': driftfixImg,
+  'neuroscan': neuroscanImg,
+  'glb-dental-intellect': glbDentalImg,
+  'uidai-insights': uidaiImg,
+  'crisis-command': crisisCommandImg,
+};
+
 export const ProjectDetail = () => {
   const { slug } = useParams();
   const { isDark } = useTheme();
   const t = tc(isDark);
-  const project = projects.find(p => p.slug === slug);
 
-  if (!project) {
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Show default immediately, then fetch from Firestore
+    const defaultProject = defaultProjects.find(p => p.slug === slug);
+    if (defaultProject) {
+      setProject({ ...defaultProject, order: 0 });
+    }
+
+    fetchProjects().then((data) => {
+      const found = data.find(p => p.slug === slug);
+      if (found) setProject(found);
+      setLoading(false);
+    });
+  }, [slug]);
+
+  if (!loading && !project) {
     return (
       <div className={`min-h-screen ${t.pageBg} flex items-center justify-center ${t.text}`}>
         <div className="text-center">
@@ -28,6 +55,16 @@ export const ProjectDetail = () => {
       </div>
     );
   }
+
+  if (!project) {
+    return (
+      <div className={`min-h-screen ${t.pageBg} flex items-center justify-center`}>
+        <div className="animate-spin w-8 h-8 border-2 border-white/20 border-t-white rounded-full" />
+      </div>
+    );
+  }
+
+  const imgSrc = localImages[project.slug] || project.image;
 
   return (
     <div className={`${t.pageBg} min-h-screen ${t.text} pt-32 px-6 transition-colors duration-500`}>
@@ -55,7 +92,7 @@ export const ProjectDetail = () => {
                initial={{ scale: 1.1 }}
                animate={{ scale: 1 }}
                transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
-               src={project.slug === 'modshield' ? modShieldImg : project.slug === 'carbon-tracker' ? carbonTrackerImg : project.slug === 'driftfix' ? driftfixImg : project.slug === 'neuroscan' ? neuroscanImg : project.slug === 'glb-dental-intellect' ? glbDentalImg : project.slug === 'uidai-insights' ? uidaiImg : project.slug === 'crisis-command' ? crisisCommandImg : project.image}
+               src={imgSrc}
                alt={project.title}
                className="w-full h-full object-cover"
              />
@@ -73,11 +110,11 @@ export const ProjectDetail = () => {
                 <span className={`text-xs font-mono uppercase tracking-widest ${t.faint} block mb-2`}>Role</span>
                 <p className="text-xl font-light">{project.role}</p>
               </div>
-              {(project as any).stack && (
+              {project.stack && project.stack.length > 0 && (
                 <div>
                   <span className={`text-xs font-mono uppercase tracking-widest ${t.faint} block mb-4`}>Tech Stack</span>
                   <div className="flex flex-wrap gap-2">
-                    {(project as any).stack.map((tech: string) => (
+                    {project.stack.map((tech: string) => (
                       <span key={tech} className={`px-3 py-1 ${isDark ? 'bg-white/5' : 'bg-neutral-100'} border ${t.border} rounded-full text-xs font-mono`}>
                         {tech}
                       </span>
@@ -85,12 +122,12 @@ export const ProjectDetail = () => {
                   </div>
                 </div>
               )}
-              {((project as any).github || (project as any).live) && (
+              {(project.github || project.live) && (
                 <div className="space-y-3">
                   <span className={`text-xs font-mono uppercase tracking-widest ${t.faint} block mb-4`}>Links</span>
-                  {(project as any).github && (
+                  {project.github && (
                     <a
-                      href={(project as any).github}
+                      href={project.github}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`flex items-center gap-2 ${t.muted} hover:${isDark ? 'text-white' : 'text-neutral-900'} transition-colors group`}
@@ -100,9 +137,9 @@ export const ProjectDetail = () => {
                       <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
                     </a>
                   )}
-                  {(project as any).live && (
+                  {project.live && (
                     <a
-                      href={(project as any).live}
+                      href={project.live}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`flex items-center gap-2 ${t.muted} hover:${isDark ? 'text-white' : 'text-neutral-900'} transition-colors group`}

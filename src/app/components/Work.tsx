@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { projects } from '../data/projects'; // Import data
+import { fetchProjects, type Project } from '../data/firebaseData';
+import { projects as defaultProjects } from '../data/projects';
 import { useTheme, tc } from '../context/ThemeContext';
 import modShieldImg from '../../imports/ModShield.png';
 import carbonTrackerImg from '../../imports/6.png';
@@ -12,9 +13,25 @@ import glbDentalImg from '../../imports/LOGO.png';
 import uidaiImg from '../../imports/5.png';
 import crisisCommandImg from '../../imports/7.png';
 
+const localImages: Record<string, string> = {
+  'modshield': modShieldImg,
+  'carbon-tracker': carbonTrackerImg,
+  'driftfix': driftfixImg,
+  'neuroscan': neuroscanImg,
+  'glb-dental-intellect': glbDentalImg,
+  'uidai-insights': uidaiImg,
+  'crisis-command': crisisCommandImg,
+};
+
 export const Work = () => {
   const { isDark } = useTheme();
   const t = tc(isDark);
+
+  const [projects, setProjects] = useState<Project[]>(defaultProjects.map((p, i) => ({ ...p, order: i })));
+
+  useEffect(() => {
+    fetchProjects().then((data) => setProjects(data));
+  }, []);
 
   return (
     <div className={`${t.pageBg} min-h-screen ${t.text} pt-32 px-6 transition-colors duration-500`}>
@@ -34,7 +51,7 @@ export const Work = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 gap-y-16 pb-32">
           {projects.map((project, index) => (
             <motion.div
-              key={project.id}
+              key={project.id || project.slug}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
@@ -43,7 +60,7 @@ export const Work = () => {
               <Link to={`/work/${project.slug}`}>
                 <div className={`relative overflow-hidden aspect-[3/4] mb-6 ${t.surface} rounded-sm`}>
                    <img
-                     src={project.slug === 'modshield' ? modShieldImg : project.slug === 'carbon-tracker' ? carbonTrackerImg : project.slug === 'driftfix' ? driftfixImg : project.slug === 'neuroscan' ? neuroscanImg : project.slug === 'glb-dental-intellect' ? glbDentalImg : project.slug === 'uidai-insights' ? uidaiImg : project.slug === 'crisis-command' ? crisisCommandImg : project.image}
+                     src={localImages[project.slug] || project.image}
                      alt={project.title}
                      className="object-cover w-full h-full opacity-80 group-hover:scale-105 group-hover:opacity-100 transition-all duration-700"
                    />

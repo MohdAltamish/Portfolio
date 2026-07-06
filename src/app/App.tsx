@@ -9,6 +9,7 @@ import { Footer } from './components/Footer';
 import { Navbar } from './components/Navbar';
 import { Work } from './components/Work';
 import { ProjectDetail } from './components/ProjectDetail';
+import { AdminPanel } from './components/admin/AdminLayout';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 
 // Preloader Component
@@ -67,6 +68,7 @@ const AppShell = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/work" element={<Work />} />
         <Route path="/work/:slug" element={<ProjectDetail />} />
+        <Route path="/admin" element={<AdminPanel />} />
       </Routes>
     </div>
   );

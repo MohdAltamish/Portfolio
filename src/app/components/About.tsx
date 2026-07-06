@@ -1,9 +1,10 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, useInView } from 'motion/react';
 import { Download, ExternalLink } from 'lucide-react';
 import { useTheme, tc } from '../context/ThemeContext';
 import myWall from '../../imports/My-Wall.png';
 import myResume from '../../imports/My-Resume.pdf?url';
+import { fetchSiteContent, defaultSiteContent, type AboutData } from '../data/firebaseData';
 
 export const About = () => {
   const { isDark } = useTheme();
@@ -18,6 +19,12 @@ export const About = () => {
   });
 
   const opacity = useTransform(scrollYProgress, [0, 0.3], [0, 1]);
+
+  const [about, setAbout] = useState<AboutData>(defaultSiteContent.about);
+
+  useEffect(() => {
+    fetchSiteContent().then((content) => setAbout(content.about));
+  }, []);
 
   return (
     <section ref={containerRef} id="about" className={`py-32 relative ${t.pageBg} overflow-hidden transition-colors duration-500`}>
@@ -46,8 +53,8 @@ export const About = () => {
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
               className={`text-5xl md:text-8xl font-medium tracking-tighter mb-12 leading-[0.9] ${t.text}`}
             >
-              Driven by code, <br />
-              <span className={`italic font-serif ${t.subtle}`}>inspired</span> by innovation.
+              {about.heading} <br />
+              <span className={`italic font-serif ${t.subtle}`}>{about.headingAccent}</span> by innovation.
             </motion.h2>
 
             <div className={`grid md:grid-cols-2 gap-12 text-lg font-light ${t.muted} leading-relaxed`}>
@@ -58,12 +65,9 @@ export const About = () => {
                 transition={{ delay: 0.2, duration: 0.8 }}
                 className="space-y-6"
               >
-                <p>
-                  I'm a <span className={t.text}>B.Tech CSE student</span> at GL Bajaj Institute of Technology and Management (2025–29), a freelance full stack web developer serving startups and small businesses.
-                </p>
-                <p>
-                  I'm a <span className={t.text}>Google Gemini Student Ambassador</span>, <span className={t.text}>GSSoC 2026 contributor</span> (Open Source & AI/Agents tracks), and Oracle OCI certified in both AI Foundations and DevOps.
-                </p>
+                {about.paragraphs.slice(0, 2).map((p, i) => (
+                  <p key={i} dangerouslySetInnerHTML={{ __html: p }} />
+                ))}
               </motion.div>
 
               <motion.div
@@ -73,37 +77,30 @@ export const About = () => {
                 transition={{ delay: 0.3, duration: 0.8 }}
                 className="space-y-6"
               >
-                <p>
-                  I possess a strong foundation in Python and Java, actively refining my skills in Data Structures and Algorithms.
-                </p>
-                <p className={isDark ? 'text-white/80' : 'text-neutral-700'}>
-                  My passion lies in building full-stack and AI-powered products — from multi-agent CI/CD pipelines to healthcare platforms — and competing in hackathons across Google Cloud, GitLab, Meta, HuggingFace, and UIDAI tracks.
-                </p>
+                {about.paragraphs.slice(2).map((p, i) => (
+                  <p key={i} className={i === about.paragraphs.slice(2).length - 1 ? (isDark ? 'text-white/80' : 'text-neutral-700') : ''}>
+                    {p}
+                  </p>
+                ))}
               </motion.div>
             </div>
 
             {/* Stats & Trust */}
             <div className={`mt-16 pt-16 border-t ${t.thinBorder}`}>
                <div className="grid grid-cols-3 gap-8 mb-16">
-                 <div className={`space-y-2 border-r ${t.thinBorder}`}>
-                   <h4 className={`text-4xl font-light ${t.text}`}>01<span className={`${t.faint} text-lg`}>+</span></h4>
-                   <p className={`text-xs uppercase tracking-widest ${t.subtle}`}>Hackathon Wins</p>
-                 </div>
-                 <div className={`space-y-2 border-r ${t.thinBorder}`}>
-                   <h4 className={`text-4xl font-light ${t.text}`}>07<span className={`${t.faint} text-lg`}>+</span></h4>
-                   <p className={`text-xs uppercase tracking-widest ${t.subtle}`}>AI/ML Projects</p>
-                 </div>
-                 <div className="space-y-2">
-                   <h4 className={`text-4xl font-light ${t.text}`}>96<span className={`${t.faint} text-lg`}>%</span></h4>
-                   <p className={`text-xs uppercase tracking-widest ${t.subtle}`}>ML Accuracy</p>
-                 </div>
+                 {about.stats.map((stat, i) => (
+                   <div key={i} className={`space-y-2 ${i < about.stats.length - 1 ? `border-r ${t.thinBorder}` : ''}`}>
+                     <h4 className={`text-4xl font-light ${t.text}`}>{stat.value}<span className={`${t.faint} text-lg`}>{stat.suffix}</span></h4>
+                     <p className={`text-xs uppercase tracking-widest ${t.subtle}`}>{stat.label}</p>
+                   </div>
+                 ))}
                </div>
 
                {/* Certifications & Programs */}
                <div className="mb-12">
                  <span className={`text-xs font-mono uppercase tracking-widest ${t.faint} block mb-6`}>Certifications & Programs</span>
                  <div className={`flex flex-wrap gap-x-12 gap-y-4 ${t.muted} font-light text-lg`}>
-                   {['Oracle OCI DevOps', 'Oracle AI Foundations', 'Google Gemini Ambassador', 'GSSoC 2026', 'Gen AI Academy'].map((cert, i) => (
+                   {about.certifications.map((cert, i) => (
                      <motion.span
                        key={cert}
                        initial={{ opacity: 0 }}
@@ -134,7 +131,7 @@ export const About = () => {
                    Download Resume
                  </a>
                  <a
-                   href="https://drive.google.com/file/d/1cX4JE4aCN61FYuo0B_d0DzcJqWxhIoEa/view?usp=sharing"
+                   href={about.resumeDriveLink}
                    target="_blank"
                    rel="noopener noreferrer"
                    className={`group inline-flex items-center gap-3 px-6 py-3 rounded-full border ${t.border} ${t.muted} hover:${t.text} transition-all duration-300 text-sm font-mono uppercase tracking-widest`}

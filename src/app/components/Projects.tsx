@@ -1,8 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform } from 'motion/react';
 import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { projects } from '../data/projects'; // Import shared data
+import { fetchProjects, type Project } from '../data/firebaseData';
+import { projects as defaultProjects } from '../data/projects';
 import { useTheme, tc } from '../context/ThemeContext';
 import modShieldImg from '../../imports/ModShield.png';
 import carbonTrackerImg from '../../imports/6.png';
@@ -12,12 +13,26 @@ import glbDentalImg from '../../imports/LOGO.png';
 import uidaiImg from '../../imports/5.png';
 import crisisCommandImg from '../../imports/7.png';
 
+// Map slugs to local images for known projects
+const localImages: Record<string, string> = {
+  'modshield': modShieldImg,
+  'carbon-tracker': carbonTrackerImg,
+  'driftfix': driftfixImg,
+  'neuroscan': neuroscanImg,
+  'glb-dental-intellect': glbDentalImg,
+  'uidai-insights': uidaiImg,
+  'crisis-command': crisisCommandImg,
+};
+
 export const Projects = () => {
   const { isDark } = useTheme();
   const t = tc(isDark);
 
-  // Use first 4 projects for home
-  const featuredProjects = projects.slice(0, 4);
+  const [projects, setProjects] = useState<Project[]>(defaultProjects.slice(0, 4).map((p, i) => ({ ...p, order: i })));
+
+  useEffect(() => {
+    fetchProjects().then((data) => setProjects(data.slice(0, 4)));
+  }, []);
 
   return (
     <section id="work" className={`py-32 px-6 ${t.pageBg} transition-colors duration-500`}>
@@ -51,8 +66,8 @@ export const Projects = () => {
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-8 md:gap-y-32">
-          {featuredProjects.map((project, index) => (
-            <ProjectCard key={project.id} project={project} index={index} isDark={isDark} t={t} />
+          {projects.map((project, index) => (
+            <ProjectCard key={project.id || project.slug} project={project} index={index} isDark={isDark} t={t} />
           ))}
         </div>
       </div>
@@ -60,7 +75,7 @@ export const Projects = () => {
   );
 };
 
-const ProjectCard = ({ project, index, isDark, t }: { project: any, index: number, isDark: boolean, t: any }) => {
+const ProjectCard = ({ project, index, isDark, t }: { project: Project, index: number, isDark: boolean, t: any }) => {
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -69,6 +84,8 @@ const ProjectCard = ({ project, index, isDark, t }: { project: any, index: numbe
 
   const y = useTransform(scrollYProgress, [0, 1], [0, -50]);
   const isEven = index % 2 === 0;
+
+  const imgSrc = localImages[project.slug] || project.image;
 
   return (
     <motion.div
@@ -81,7 +98,7 @@ const ProjectCard = ({ project, index, isDark, t }: { project: any, index: numbe
           <motion.img
             whileHover={{ scale: 1.05 }}
             transition={{ duration: 0.7, ease: [0.25, 1, 0.5, 1] }}
-            src={project.slug === 'modshield' ? modShieldImg : project.slug === 'carbon-tracker' ? carbonTrackerImg : project.slug === 'driftfix' ? driftfixImg : project.slug === 'neuroscan' ? neuroscanImg : project.slug === 'glb-dental-intellect' ? glbDentalImg : project.slug === 'uidai-insights' ? uidaiImg : project.slug === 'crisis-command' ? crisisCommandImg : project.image}
+            src={imgSrc}
             alt={project.title}
             className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
           />

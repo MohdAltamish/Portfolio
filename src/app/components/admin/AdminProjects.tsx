@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Pencil, Trash2, X, Save, ExternalLink, Github, Loader2 } from 'lucide-react';
-import { fetchProjects, addProject, updateProject, deleteProject, type Project } from '../../data/firebaseData';
+import { Plus, Pencil, Trash2, X, Save, ExternalLink, Github, Loader2, RefreshCw } from 'lucide-react';
+import { fetchProjects, addProject, updateProject, deleteProject, cleanAndReseedProjects, type Project } from '../../data/firebaseData';
 
 const emptyProject: Omit<Project, 'id'> = {
   slug: '',
@@ -26,7 +26,9 @@ export const AdminProjects = () => {
   const [formData, setFormData] = useState<Omit<Project, 'id'>>(emptyProject);
   const [stackInput, setStackInput] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [cleaning, setCleaning] = useState(false);
 
   const loadProjects = async () => {
     setLoading(true);
@@ -43,6 +45,7 @@ export const AdminProjects = () => {
     setEditingProject(null);
     setFormData(emptyProject);
     setStackInput('');
+    setSaveError(null);
     setModalOpen(true);
   };
 
@@ -63,6 +66,7 @@ export const AdminProjects = () => {
       order: project.order || 0,
     });
     setStackInput((project.stack || []).join(', '));
+    setSaveError(null);
     setModalOpen(true);
   };
 
@@ -81,10 +85,12 @@ export const AdminProjects = () => {
       } else {
         await addProject(projectData);
       }
+      setSaveError(null);
       setModalOpen(false);
       await loadProjects();
     } catch (e) {
       console.error('Failed to save project:', e);
+      setSaveError('Failed to save project. Check your connection and try again.');
     } finally {
       setSaving(false);
     }
@@ -97,6 +103,23 @@ export const AdminProjects = () => {
       await loadProjects();
     } catch (e) {
       console.error('Failed to delete project:', e);
+      setDeleteConfirm(null);
+      setSaveError('Failed to delete project. Check your connection and try again.');
+    }
+  };
+
+  const handleCleanReseed = async () => {
+    if (!window.confirm('This will DELETE all projects in Firestore and re-seed from defaults. Are you sure?')) return;
+    setCleaning(true);
+    setSaveError(null);
+    try {
+      await cleanAndReseedProjects();
+      await loadProjects();
+    } catch (e) {
+      console.error('Clean reseed failed:', e);
+      setSaveError('Failed to clean and re-seed projects. Check console for details.');
+    } finally {
+      setCleaning(false);
     }
   };
 
@@ -116,14 +139,33 @@ export const AdminProjects = () => {
           <h2 className="text-2xl font-medium tracking-tight">Projects</h2>
           <p className="text-neutral-500 text-sm font-light mt-1">{projects.length} projects</p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="flex items-center gap-2 px-4 py-2.5 bg-white text-black rounded-xl text-sm font-medium hover:bg-neutral-200 active:scale-[0.97] transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          Add Project
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCleanReseed}
+            disabled={cleaning}
+            title="Delete all Firestore projects and re-seed from defaults"
+            className="flex items-center gap-2 px-3 py-2.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-sm font-medium hover:bg-red-500/20 active:scale-[0.97] transition-all disabled:opacity-50"
+          >
+            {cleaning ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            {cleaning ? 'Fixing…' : 'Fix Duplicates'}
+          </button>
+          <button
+            onClick={openAddModal}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white text-black rounded-xl text-sm font-medium hover:bg-neutral-200 active:scale-[0.97] transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Add Project
+          </button>
+        </div>
       </div>
+
+      {/* Global error banner */}
+      {saveError && (
+        <div className="mb-6 flex items-center justify-between gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          <span>{saveError}</span>
+          <button onClick={() => setSaveError(null)} className="text-red-400 hover:text-red-300 transition-colors shrink-0"><X className="w-4 h-4" /></button>
+        </div>
+      )}
 
       {/* Projects List */}
       <div className="space-y-3">
@@ -307,6 +349,13 @@ export const AdminProjects = () => {
                       {saving ? 'Saving...' : 'Save Project'}
                     </button>
                   </div>
+
+                  {/* Inline error inside the modal */}
+                  {saveError && (
+                    <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+                      {saveError}
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>

@@ -150,11 +150,11 @@ export async function fetchSiteContent(): Promise<SiteContent> {
         about: { ...defaultSiteContent.about, ...data.about },
         skills: data.skills || defaultSiteContent.skills,
       };
-    } else {
-      // Seed Firestore with defaults on first load
-      await setDoc(docRef, defaultSiteContent);
-      return defaultSiteContent;
     }
+
+    // Document doesn't exist yet — return defaults without writing.
+    // Seeding is done by the admin panel on first authenticated save.
+    return defaultSiteContent;
   } catch (e) {
     console.warn('Firestore read failed, using defaults:', e);
     return defaultSiteContent;
@@ -166,43 +166,75 @@ export async function updateSiteContent(data: SiteContent): Promise<void> {
   await setDoc(docRef, data);
 }
 
+// FIX: Use updateDoc with field-path keys to avoid a round-trip read before every save.
 export async function updateHero(hero: HeroData): Promise<void> {
-  const current = await fetchSiteContent();
-  await updateSiteContent({ ...current, hero });
+  const docRef = doc(db, 'siteContent', SITE_DOC);
+  try {
+    // Attempt a partial update — works if the document already exists.
+    await updateDoc(docRef, { hero });
+  } catch {
+    // Document might not exist yet — fall back to a full setDoc with defaults.
+    await setDoc(docRef, { ...defaultSiteContent, hero });
+  }
 }
 
+// FIX: Use updateDoc with field-path keys to avoid a round-trip read before every save.
 export async function updateAbout(about: AboutData): Promise<void> {
-  const current = await fetchSiteContent();
-  await updateSiteContent({ ...current, about });
+  const docRef = doc(db, 'siteContent', SITE_DOC);
+  try {
+    await updateDoc(docRef, { about });
+  } catch {
+    await setDoc(docRef, { ...defaultSiteContent, about });
+  }
 }
 
+// FIX: Use updateDoc with field-path keys to avoid a round-trip read before every save.
 export async function updateSkills(skills: SkillCard[]): Promise<void> {
-  const current = await fetchSiteContent();
-  await updateSiteContent({ ...current, skills });
+  const docRef = doc(db, 'siteContent', SITE_DOC);
+  try {
+    await updateDoc(docRef, { skills });
+  } catch {
+    await setDoc(docRef, { ...defaultSiteContent, skills });
+  }
 }
 
 // ── Projects ───────────────────────────────────────────────
 
 export async function fetchProjects(): Promise<Project[]> {
   try {
-    const q = query(collection(db, 'projects'), orderBy('order', 'asc'));
-    const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-      // Seed Firestore with default projects
-      const seeded: Project[] = [];
-      for (let i = 0; i < defaultProjects.length; i++) {
-        const project = { ...defaultProjects[i], order: i };
-        const docRef = await addDoc(collection(db, 'projects'), project);
-        seeded.push({ ...project, id: docRef.id });
-      }
-      return seeded;
+    // FIX: Try the ordered query first; if it fails (e.g., missing composite index
+    // on a brand-new Firestore collection), fall back to a plain getDocs and sort
+    // in memory — this prevents a false-empty snapshot from triggering seeding.
+    let snapshot;
+    try {
+      const q = query(collection(db, 'projects'), orderBy('order', 'asc'));
+      snapshot = await getDocs(q);
+    } catch {
+      snapshot = await getDocs(collection(db, 'projects'));
     }
 
-    return snapshot.docs.map((d) => ({
+    if (snapshot.empty) {
+      // Collection is genuinely empty — return defaults without seeding.
+      // Seeding is done by the admin panel on first authenticated save.
+      return defaultProjects.map((p, i) => ({ ...p, order: i }));
+    }
+
+    const docs = snapshot.docs.map((d) => ({
       id: d.id,
       ...d.data(),
     })) as Project[];
+
+    // Sort in-memory in case the fallback (non-ordered) query was used.
+    const sorted = docs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+    // Deduplicate by slug — keep the first occurrence (lowest order).
+    // This guards against projects being seeded multiple times in Firestore.
+    const seen = new Set<string>();
+    return sorted.filter((p) => {
+      if (seen.has(p.slug)) return false;
+      seen.add(p.slug);
+      return true;
+    });
   } catch (e) {
     console.warn('Firestore projects read failed, using defaults:', e);
     return defaultProjects.map((p, i) => ({ ...p, order: i }));
@@ -225,3 +257,46 @@ export async function deleteProject(id: string): Promise<void> {
   const docRef = doc(db, 'projects', id);
   await deleteDoc(docRef);
 }
+
+// ── Admin Seeding (call from admin panel only) ─────────────
+
+/**
+ * Seeds Firestore with default site content.
+ * Should only be called from an authenticated admin context.
+ */
+export async function seedSiteContent(): Promise<void> {
+  const docRef = doc(db, 'siteContent', SITE_DOC);
+  await setDoc(docRef, defaultSiteContent);
+}
+
+/**
+ * Seeds Firestore with default projects.
+ * Should only be called from an authenticated admin context.
+ */
+export async function seedProjects(): Promise<Project[]> {
+  const seeded: Project[] = [];
+  for (let i = 0; i < defaultProjects.length; i++) {
+    const project = { ...defaultProjects[i], order: i };
+    const docRef = await addDoc(collection(db, 'projects'), project);
+    seeded.push({ ...project, id: docRef.id });
+  }
+  return seeded;
+}
+
+/**
+ * Deletes ALL project documents in Firestore, then re-seeds from defaults.
+ * Use this to permanently fix duplicate projects caused by multiple seed calls.
+ * Should only be called from an authenticated admin context.
+ */
+export async function cleanAndReseedProjects(): Promise<Project[]> {
+  // 1. Fetch all existing docs (including duplicates)
+  const snapshot = await getDocs(collection(db, 'projects'));
+
+  // 2. Delete every doc
+  const deletions = snapshot.docs.map((d) => deleteDoc(doc(db, 'projects', d.id)));
+  await Promise.all(deletions);
+
+  // 3. Re-seed from defaults (each project added once)
+  return seedProjects();
+}
+

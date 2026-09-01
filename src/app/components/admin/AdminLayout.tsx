@@ -52,7 +52,7 @@ export const AdminPanel = () => {
   }
 
   if (!user) {
-    return <AdminLogin onLogin={() => {}} />;
+    return <AdminLogin />;
   }
 
   return (

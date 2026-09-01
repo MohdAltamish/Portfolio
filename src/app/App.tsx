@@ -68,11 +68,11 @@ const AppShell = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/work" element={<Work />} />
         <Route path="/work/:slug" element={<ProjectDetail />} />
-        <Route path="/admin" element={<AdminPanel />} />
       </Routes>
     </div>
   );
 };
+
 
 const HomePage = () => (
   <>
@@ -88,7 +88,11 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Intro animation duration
+    // Intro animation duration — skip for admin route
+    if (window.location.pathname.startsWith('/admin')) {
+      setLoading(false);
+      return;
+    }
     const timer = setTimeout(() => {
       setLoading(false);
     }, 2000);
@@ -99,14 +103,23 @@ function App() {
     <ThemeProvider>
     <Router>
       <ScrollToTop />
-      
-      <AnimatePresence mode="wait">
-        {loading && <Preloader key="preloader" />}
-      </AnimatePresence>
+      <Routes>
+        {/* Admin panel — fully isolated, no Navbar or preloader */}
+        <Route path="/admin" element={<AdminPanel />} />
 
-      {!loading && (
-        <AppShell />
-      )}
+        {/* Portfolio routes — wrapped in AppShell (Navbar + theme) */}
+        <Route
+          path="/*"
+          element={
+            <>
+              <AnimatePresence mode="wait">
+                {loading && <Preloader key="preloader" />}
+              </AnimatePresence>
+              {!loading && <AppShell />}
+            </>
+          }
+        />
+      </Routes>
     </Router>
     </ThemeProvider>
   );

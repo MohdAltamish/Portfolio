@@ -151,7 +151,9 @@ const ContactModal = ({ isOpen, onClose, isDark, t }: { isOpen: boolean; onClose
     } catch (error: any) {
       console.error('EmailJS Error:', error);
       setFormState('error');
-      setErrorMsg(error?.text || 'Something went wrong. Please try again.');
+      // EmailJS errors can be { status, text } objects or plain Error instances
+      const msg = error?.text || error?.message || 'Something went wrong. Please try again.';
+      setErrorMsg(msg);
       setTimeout(() => setFormState('idle'), 4000);
     }
   };

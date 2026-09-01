@@ -4,11 +4,7 @@ import { Lock, Mail, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 
-interface AdminLoginProps {
-  onLogin: () => void;
-}
-
-export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
+export const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -22,7 +18,7 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      onLogin();
+      // Auth state is managed by onAuthStateChanged in AdminLayout — no callback needed.
     } catch (err: any) {
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError('Invalid email or password');

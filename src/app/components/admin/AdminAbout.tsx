@@ -8,6 +8,7 @@ export const AdminAbout = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [newCert, setNewCert] = useState('');
 
   useEffect(() => {
@@ -26,10 +27,12 @@ export const AdminAbout = () => {
     setSaving(true);
     try {
       await updateAbout(data);
+      setSaveError(null);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
       console.error('Failed to save about data:', e);
+      setSaveError('Failed to save. Check your connection and try again.');
     } finally {
       setSaving(false);
     }
@@ -94,6 +97,14 @@ export const AdminAbout = () => {
           {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
         </button>
       </div>
+
+      {/* Error banner */}
+      {saveError && (
+        <div className="mb-4 flex items-center justify-between gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          <span>{saveError}</span>
+          <button onClick={() => setSaveError(null)} className="text-red-400 hover:text-red-300 transition-colors shrink-0 text-lg leading-none">&times;</button>
+        </div>
+      )}
 
       <div className="space-y-10">
         {/* Heading */}
